@@ -33,7 +33,7 @@ struct Vec3 {
         return { x / scale, y / scale, z / scale };
     }
     
-    // === ДОБАВЛЕНО: compound-операторы для оптимизации ===
+    // === Г„ГЋГЃГЂГ‚Г‹Г…ГЌГЋ: compound-Г®ГЇГҐГ°Г ГІГ®Г°Г» Г¤Г«Гї Г®ГЇГІГЁГ¬ГЁГ§Г Г¶ГЁГЁ ===
     Vec3& operator += (const Vec3& other) {
         x += other.x; y += other.y; z += other.z;
         return *this;
@@ -85,7 +85,7 @@ struct Glowing {
     // do not change the signature
     float GetBrightness() const { return brightness; }
     
-    // === ДОБАВЛЕНО: конструкторы для совместимости с vector ===
+    // === Г„ГЋГЃГЂГ‚Г‹Г…ГЌГЋ: ГЄГ®Г­Г±ГІГ°ГіГЄГІГ®Г°Г» Г¤Г«Гї Г±Г®ГўГ¬ГҐГ±ГІГЁГ¬Г®Г±ГІГЁ Г± vector ===
     Glowing() = default;
     explicit Glowing(float b) : brightness(b) {}
 
@@ -125,7 +125,7 @@ struct ParticleSystem {
 
     // do not change the signature
     void ApplyImpulse(const Vec3& impulse) {
-        // === OPTIMIZED: работаем только с компактным вектором Physical ===
+        // === OPTIMIZED: Г°Г ГЎГ®ГІГ ГҐГ¬ ГІГ®Г«ГјГЄГ® Г± ГЄГ®Г¬ГЇГ ГЄГІГ­Г»Г¬ ГўГҐГЄГІГ®Г°Г®Г¬ Physical ===
         for (auto& p : physicals) {
             const Vec3 dv = impulse / p.mass;
             p.velocity += dv;
@@ -146,14 +146,14 @@ struct ParticleSystem {
     }
     // do not change the signature and the relation with sin
     void StepGlow(float t) {
-        // === OPTIMIZED: вычисляем sin один раз ===
+        // === OPTIMIZED: ГўГ»Г·ГЁГ±Г«ГїГҐГ¬ sin Г®Г¤ГЁГ­ Г°Г Г§ ===
         const float newBrightness = std::sin(t);
         for (auto& g : glowings) {
             g.brightness = newBrightness;
         }
     }
 
-    // === OPTIMIZED: Structure of Arrays вместо Array of Structures ===
+    // === OPTIMIZED: Structure of Arrays ===
     std::vector<Physical> physicals;
     std::vector<Renderable> renderables;
     std::vector<Glowing> glowings;
