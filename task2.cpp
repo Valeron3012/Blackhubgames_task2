@@ -72,7 +72,6 @@ struct Renderable {
     std::array<uint8_t, 1024> data;
 };
 
-// === РЕАЛИЗАЦИЯ КОНСТРУКТОРА (была пропущена) ===
 inline Renderable::Renderable(const uint8_t* /*renderData*/) {
     data.fill(0);
 }
