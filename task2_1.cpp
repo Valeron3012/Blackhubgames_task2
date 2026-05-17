@@ -3,8 +3,7 @@
 #include <array>
 #include <cmath>
 
-// === Выравнивание для SIMD ===
-struct alignas(16) Vec3 {
+struct Vec3 {
     // do not remove the default constructor
     Vec3() = default;
 
@@ -33,39 +32,29 @@ struct alignas(16) Vec3 {
     Vec3 operator / (float scale) const {
         return { x / scale, y / scale, z / scale };
     }
-    
-    Vec3& operator += (const Vec3& other) {
-        x += other.x; y += other.y; z += other.z;
-        return *this;
-    }
-    
-    Vec3& operator *= (float scale) {
-        x *= scale; y *= scale; z *= scale;
-        return *this;
-    }
 };
 
 // do not change
 struct ParticleCInfo {
-    Vec3 initialPosition;    Vec3 initialVelocity;
+    Vec3 initialPosition;
+    Vec3 initialVelocity;
     float mass;
     uint8_t* renderData;
     float brightness;
 };
 
-struct alignas(16) Physical {
+struct Physical {
     Physical(const Vec3& position, const Vec3& velocity, float mass)
         : position(position), velocity(velocity), mass(mass), invMass(1.0f / mass) {}
     
-    // do not change the signature
-    const Vec3& GetPosition() const { return position; }
+    // do not change the signature    const Vec3& GetPosition() const { return position; }
     // do not change the signature
     const Vec3& GetVelocity() const { return velocity; }
 
     Vec3 position;
     Vec3 velocity;
     float mass;
-    float invMass;  // === OPT: кэшируем обратную массу ===
+    float invMass;  // Предвычисляем 1/mass для замены деления на умножение
 };
 
 // do not change
@@ -97,14 +86,17 @@ struct Particle {
     Renderable renderable;
     Glowing glowing;
 };
+
 struct ParticleSystem {
+
     // do not change the signature
     const Physical& GetPhysical(size_t id) const { return physicals[id]; }
+
     // do not change the signature
     const Renderable& GetRenderable(size_t id) const { return renderables[id]; }
+
     // do not change the signature
-    const Glowing& GetGlowing(size_t id) const { return glowings[id]; }
-    
+    const Glowing& GetGlowing(size_t id) const { return glowings[id]; }    
     // do not change the signature
     size_t CreateParticle(const ParticleCInfo& pi) {
         physicals.emplace_back(pi.initialPosition, pi.initialVelocity, pi.mass);
@@ -115,57 +107,35 @@ struct ParticleSystem {
 
     // do not change the signature
     void ApplyImpulse(const Vec3& impulse) {
-        // === OPT: сырые указатели + pragma для векторизации ===
-        const size_t n = physicals.size();
-        if (n == 0) return;
-        
-        Physical* __restrict__ p = physicals.data();
-        const float ix = impulse.x, iy = impulse.y, iz = impulse.z;
-        
-        #pragma GCC ivdep
-        for (size_t i = 0; i < n; ++i) {
-            const float invM = p[i].invMass;
-            p[i].velocity.x += ix * invM;
-            p[i].velocity.y += iy * invM;
-            p[i].velocity.z += iz * invM;
+        // Прямой доступ к полям + умножение вместо деления
+        // Компилятор легко векторизует такой цикл при -O3 -march=native
+        for (auto& p : physicals) {
+            p.velocity.x += impulse.x * p.invMass;
+            p.velocity.y += impulse.y * p.invMass;
+            p.velocity.z += impulse.z * p.invMass;
         }
     }
 
     void ClearVelocity() {
-        const size_t n = physicals.size();
-        if (n == 0) return;
-        Physical* __restrict__ p = physicals.data();
-        
-        #pragma GCC ivdep
-        for (size_t i = 0; i < n; ++i) {
-            p[i].velocity = { 0, 0, 0 };
+        for (auto& p : physicals) {
+            p.velocity = { 0, 0, 0 };
         }
     }
 
     // do not change the signature
     void Step(float dt) {
-        const size_t n = physicals.size();
-        if (n == 0) return;        Physical* __restrict__ p = physicals.data();
-        
-        #pragma GCC ivdep
-        for (size_t i = 0; i < n; ++i) {
-            p[i].position.x += p[i].velocity.x * dt;
-            p[i].position.y += p[i].velocity.y * dt;
-            p[i].position.z += p[i].velocity.z * dt;
+        for (auto& p : physicals) {
+            p.position.x += p.velocity.x * dt;
+            p.position.y += p.velocity.y * dt;
+            p.position.z += p.velocity.z * dt;
         }
     }
 
     // do not change the signature and the relation with sin
     void StepGlow(float t) {
-        const size_t n = glowings.size();
-        if (n == 0) return;
-        
         const float newBrightness = std::sin(t);
-        Glowing* __restrict__ g = glowings.data();
-        
-        #pragma GCC ivdep
-        for (size_t i = 0; i < n; ++i) {
-            g[i].brightness = newBrightness;
+        for (auto& g : glowings) {
+            g.brightness = newBrightness;
         }
     }
 
@@ -175,10 +145,10 @@ struct ParticleSystem {
 };
 
 int main() {
-    constexpr size_t NUM_PARTICLES = 1'000'000;
-    constexpr int NUM_STEPS = 1000;
+    constexpr size_t NUM_PARTICLES = 1'000'000;    constexpr int NUM_STEPS = 1000;
     
     ParticleSystem ps;
+    // Обязательно резервируем память, чтобы избежать реаллокаций
     ps.physicals.reserve(NUM_PARTICLES);
     ps.renderables.reserve(NUM_PARTICLES);
     ps.glowings.reserve(NUM_PARTICLES);
@@ -194,7 +164,8 @@ int main() {
             1.f
         };
         ps.CreateParticle(info);
-    }    
+    }
+    
     for (int s = 0; s < NUM_STEPS; ++s) {
         ps.ApplyImpulse({10.f, 5.f, 2.5f});
         ps.Step(0.016f);
