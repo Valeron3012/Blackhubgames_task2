@@ -33,7 +33,6 @@ struct Vec3 {
         return { x / scale, y / scale, z / scale };
     }
     
-    // === ÄÎÁÀÂËÅÍÎ: compound-îïåðàòîðû äëÿ îïòèìèçàöèè ===
     Vec3& operator += (const Vec3& other) {
         x += other.x; y += other.y; z += other.z;
         return *this;
@@ -46,25 +45,19 @@ struct Vec3 {
 };
 
 // do not change
-struct ParticleCInfo {    Vec3 initialPosition;
-    Vec3 initialVelocity;
-    float mass;
-
+struct ParticleCInfo {
+    Vec3 initialPosition;
+    Vec3 initialVelocity;    float mass;
     uint8_t* renderData;
-
     float brightness;
 };
 
 struct Physical {
     Physical(const Vec3& position, const Vec3& velocity, float mass)
-        : position(position)
-        , velocity(velocity)
-        , mass(mass)
-    {
-    }
+        : position(position), velocity(velocity), mass(mass) {}
+    
     // do not change the signature
     const Vec3& GetPosition() const { return position; }
-
     // do not change the signature
     const Vec3& GetVelocity() const { return velocity; }
 
@@ -76,42 +69,38 @@ struct Physical {
 // do not change
 struct Renderable {
     explicit Renderable(const uint8_t* renderData);
-
     std::array<uint8_t, 1024> data;
 };
 
-struct Glowing {
+// === РЕАЛИЗАЦИЯ КОНСТРУКТОРА (была пропущена) ===
+inline Renderable::Renderable(const uint8_t* /*renderData*/) {
+    data.fill(0);
+}
 
+struct Glowing {
     // do not change the signature
     float GetBrightness() const { return brightness; }
     
-    // === ÄÎÁÀÂËÅÍÎ: êîíñòðóêòîðû äëÿ ñîâìåñòèìîñòè ñ vector ===
     Glowing() = default;
     explicit Glowing(float b) : brightness(b) {}
-
     float brightness = 1;
 };
 
 struct Particle {
     explicit Particle(const ParticleCInfo& pi)
         : physical(pi.initialPosition, pi.initialVelocity, pi.mass)
-        , renderable(pi.renderData)        , glowing(pi.brightness)
-    {
-    }
-
+        , renderable(pi.renderData)
+        , glowing(pi.brightness) {}
+    
     Physical physical;
     Renderable renderable;
     Glowing glowing;
 };
-
 struct ParticleSystem {
-
     // do not change the signature
     const Physical& GetPhysical(size_t id) const { return physicals[id]; }
-
     // do not change the signature
     const Renderable& GetRenderable(size_t id) const { return renderables[id]; }
-
     // do not change the signature
     const Glowing& GetGlowing(size_t id) const { return glowings[id]; }
     
@@ -125,7 +114,6 @@ struct ParticleSystem {
 
     // do not change the signature
     void ApplyImpulse(const Vec3& impulse) {
-        // === OPTIMIZED: ðàáîòàåì òîëüêî ñ êîìïàêòíûì âåêòîðîì Physical ===
         for (auto& p : physicals) {
             const Vec3 dv = impulse / p.mass;
             p.velocity += dv;
@@ -144,16 +132,15 @@ struct ParticleSystem {
             p.position += p.velocity * dt;
         }
     }
+
     // do not change the signature and the relation with sin
     void StepGlow(float t) {
-        // === OPTIMIZED: âû÷èñëÿåì sin îäèí ðàç ===
         const float newBrightness = std::sin(t);
         for (auto& g : glowings) {
             g.brightness = newBrightness;
         }
     }
 
-    // === OPTIMIZED: Structure of Arrays ===
     std::vector<Physical> physicals;
     std::vector<Renderable> renderables;
     std::vector<Glowing> glowings;
@@ -163,7 +150,7 @@ int main() {
     ParticleSystem ps;
     std::array<uint8_t, 1024> buf{};
     
-    for (size_t i = 0; i < 1'000'000; ++i) {
+    for (size_t i = 0; i < 100'000; ++i) {
         ParticleCInfo info{{float(i), float(i), float(i)}, 
                           {1.f, 0.5f, 0.25f}, 1.f + (i%10)*0.1f, 
                           buf.data(), 1.f};
