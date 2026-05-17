@@ -158,3 +158,22 @@ struct ParticleSystem {
     std::vector<Renderable> renderables;
     std::vector<Glowing> glowings;
 };
+
+int main() {
+    ParticleSystem ps;
+    std::array<uint8_t, 1024> buf{};
+    
+    for (size_t i = 0; i < 1'000'000; ++i) {
+        ParticleCInfo info{{float(i), float(i), float(i)}, 
+                          {1.f, 0.5f, 0.25f}, 1.f + (i%10)*0.1f, 
+                          buf.data(), 1.f};
+        ps.CreateParticle(info);
+    }
+    
+    for (int s = 0; s < 1000; ++s) {
+        ps.ApplyImpulse({10.f, 5.f, 2.5f});
+        ps.Step(0.016f);
+        ps.StepGlow(s * 0.1f);
+    }
+    return 0;
+}
